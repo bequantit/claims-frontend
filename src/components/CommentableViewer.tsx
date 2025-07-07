@@ -18,7 +18,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [hoveredComment, setHoveredComment] = useState<string | null>(null);
-  const [hoveredComment, setHoveredComment] = useState<string | null>(null);
   const [selectionPosition, setSelectionPosition] = useState({ x: 0, y: 0 });
   const [showExportPreview, setShowExportPreview] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
