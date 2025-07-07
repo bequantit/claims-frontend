@@ -145,12 +145,49 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
     if (commentId && editor) {
       const comment = comments.find(c => c.id === commentId);
       if (comment) {
+        // Add temporary yellow highlight when hovering
         editor
           .chain()
           .focus()
           .setTextSelection({ from: comment.from, to: comment.to })
+          .setHighlight({ 
+            color: 'rgba(255, 235, 59, 0.4)',
+            commentId: `${commentId}-hover`,
+          })
           .run();
       }
+    } else if (editor) {
+      // Remove hover highlights when not hovering
+      const doc = editor.state.doc;
+      doc.descendants((node, pos) => {
+        if (node.marks) {
+          node.marks.forEach(mark => {
+            if (mark.type.name === 'highlight' && mark.attrs.commentId?.endsWith('-hover')) {
+              const from = pos;
+              const to = pos + node.nodeSize;
+              editor
+                .chain()
+                .focus()
+                .setTextSelection({ from, to })
+                .unsetHighlight()
+                .run();
+            }
+          });
+        }
+      });
+      
+      // Restore original comment highlights
+      comments.forEach(c => {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from: c.from, to: c.to })
+          .setHighlight({ 
+            color: 'rgba(59, 130, 246, 0.15)',
+            commentId: c.id,
+          })
+          .run();
+      });
     }
   };
 
@@ -531,6 +568,21 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
           border-bottom-color: rgba(59, 130, 246, 0.6);
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+        
+        .comment-highlight[data-comment-id$="-hover"] {
+          background: linear-gradient(120deg, rgba(255, 235, 59, 0.4) 0%, rgba(255, 193, 7, 0.4) 100%) !important;
+          border-bottom: 2px solid rgba(255, 193, 7, 0.8) !important;
+          animation: pulse-yellow 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-yellow {
+          0%, 100% {
+            background: linear-gradient(120deg, rgba(255, 235, 59, 0.4) 0%, rgba(255, 193, 7, 0.4) 100%);
+          }
+          50% {
+            background: linear-gradient(120deg, rgba(255, 235, 59, 0.6) 0%, rgba(255, 193, 7, 0.6) 100%);
+          }
         }
         
         .ProseMirror {
