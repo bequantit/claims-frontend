@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import Typography from '@tiptap/extension-typography';
-import { MessageSquare, Plus, X, Edit3, FileText, Clock, User, Send, Eye } from 'lucide-react';
+import { MessageSquare, X, Edit3, FileText, Clock, User, Send, Eye } from 'lucide-react';
 import { Comment, CommentSelection } from '../types/comment';
 import MarkdownIt from 'markdown-it';
+import { MarkdownPositionMapper } from '../utils/markdownPositionMapper';
+import { EditorPositionBridge } from '../utils/editorPositionBridge';
+import { MarkdownCommentIntegrator } from '../utils/markdownCommentIntegrator';
 
 interface CommentableViewerProps {
   content: string;
@@ -23,17 +26,14 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
   const dialogRef = useRef<HTMLDivElement>(null);
   const exportDialogRef = useRef<HTMLDivElement>(null);
 
-  // Initialize markdown parser
   const md = new MarkdownIt({
     html: true,
     linkify: true,
     typographer: true,
   });
 
-  // Convert markdown to HTML
   const htmlContent = md.render(content);
 
-  // Custom highlight extension for comments
   const CommentHighlight = Highlight.extend({
     addAttributes() {
       return {
@@ -52,6 +52,8 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
       };
     },
   });
+
+  const positionMapper = useMemo(() => new MarkdownPositionMapper(content), [content]);
 
   const editor = useEditor({
     extensions: [
@@ -76,7 +78,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         const selectedText = editor.state.doc.textBetween(from, to);
         setSelectedText({ from, to, text: selectedText });
         
-        // Get selection position for floating button
         const { view } = editor;
         const start = view.coordsAtPos(from);
         const end = view.coordsAtPos(to);
@@ -96,6 +97,10 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
     if (!selectedText || !newComment.trim() || !editor) return;
 
     const commentId = generateId();
+    
+    const positionBridge = new EditorPositionBridge(editor, positionMapper);
+    const markdownMapping = positionBridge.editorSelectionToMarkdown(selectedText.from, selectedText.to);
+    
     const comment: Comment = {
       id: commentId,
       from: selectedText.from,
@@ -104,16 +109,17 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
       comment: newComment.trim(),
       timestamp: new Date(),
       author: 'Current User',
+      markdownFrom: markdownMapping?.markdownStart,
+      markdownTo: markdownMapping?.markdownEnd,
+      markdownText: markdownMapping?.markdownText,
     };
 
-    // Add highlight to the selected text with gradient background
     editor
       .chain()
       .focus()
       .setTextSelection({ from: selectedText.from, to: selectedText.to })
       .setHighlight({ 
         color: 'rgba(59, 130, 246, 0.15)',
-        commentId: commentId,
       })
       .run();
 
@@ -145,19 +151,16 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
     if (commentId && editor) {
       const comment = comments.find(c => c.id === commentId);
       if (comment) {
-        // Add temporary yellow highlight when hovering
         editor
           .chain()
           .focus()
           .setTextSelection({ from: comment.from, to: comment.to })
           .setHighlight({ 
             color: 'rgba(255, 235, 59, 0.4)',
-            commentId: `${commentId}-hover`,
           })
           .run();
       }
     } else if (editor) {
-      // Remove hover highlights when not hovering
       const doc = editor.state.doc;
       doc.descendants((node, pos) => {
         if (node.marks) {
@@ -176,7 +179,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         }
       });
       
-      // Restore original comment highlights
       comments.forEach(c => {
         editor
           .chain()
@@ -184,7 +186,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
           .setTextSelection({ from: c.from, to: c.to })
           .setHighlight({ 
             color: 'rgba(59, 130, 246, 0.15)',
-            commentId: c.id,
           })
           .run();
       });
@@ -200,7 +201,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
     }).format(timestamp);
   };
 
-  // Calculate comment position based on text position
   const getCommentPosition = (comment: Comment) => {
     if (!editor) return { top: 0 };
     
@@ -217,8 +217,9 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
     }
   };
 
-  // Generate export data
   const generateExportData = () => {
+    const structuredFormat = MarkdownCommentIntegrator.createStructuredFormat(content, comments);
+
     return {
       document: {
         content: content,
@@ -232,19 +233,24 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         author: comment.author,
         timestamp: comment.timestamp.toISOString(),
         position: {
-          from: comment.from,
-          to: comment.to,
+          editorFrom: comment.from,
+          editorTo: comment.to,
+          markdownFrom: comment.markdownFrom,
+          markdownTo: comment.markdownTo,
+          markdownText: comment.markdownText,
         }
       })),
       summary: {
         totalComments: comments.length,
         authors: [...new Set(comments.map(c => c.author))],
         createdAt: new Date().toISOString(),
+      },
+      aiFormats: {
+        structured: structuredFormat
       }
     };
   };
 
-  // Click outside to close dialog
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
@@ -261,11 +267,9 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
 
   return (
     <div className={`relative max-w-7xl mx-auto ${className}`}>
-      {/* Document Content */}
       <div className="flex bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
         <div className="flex-1 relative bg-gradient-to-br from-white to-gray-50">
           <div className="p-12 max-w-4xl relative">
-          {/* Document Header */}
           <div className="mb-8 pb-6 border-b border-gray-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -278,12 +282,10 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
             </div>
           </div>
 
-          {/* Editor Content with Modern Typography */}
           <div className="prose prose-lg prose-slate max-w-none">
             <EditorContent editor={editor} />
           </div>
           
-          {/* Inline Comments positioned alongside text */}
           <div className="absolute left-full ml-8 top-0 w-80 pointer-events-none">
             {comments.map((comment) => {
               const position = getCommentPosition(comment);
@@ -329,7 +331,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
             })}
           </div>
           
-          {/* Floating Comment Button */}
           {selectedText && (
             <div 
               className="fixed z-20 animate-in fade-in-0 zoom-in-95 duration-200"
@@ -349,7 +350,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
             </div>
           )}
 
-          {/* Modern Comment Dialog */}
           {showCommentDialog && (
             <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
               <div 
@@ -411,7 +411,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         </div>
         </div>
 
-        {/* Comments Summary Sidebar */}
         <div className="w-80 bg-gradient-to-b from-gray-50 to-gray-100 border-l border-gray-200 flex flex-col">
           <div className="p-6 border-b border-gray-200 bg-white">
             <div className="flex items-center gap-3">
@@ -476,7 +475,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         </div>
       </div>
 
-      {/* Export Button */}
       {comments.length > 0 && (
         <div className="mt-6 flex justify-center">
           <button
@@ -484,12 +482,11 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
             className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
           >
             <Eye size={20} />
-            <span>Preview Export Data</span>
+            <span>Export JSON</span>
           </button>
         </div>
       )}
 
-      {/* Export Preview Dialog */}
       {showExportPreview && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
           <div 
@@ -501,7 +498,7 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
                 <div className="p-2 bg-green-100 rounded-lg">
                   <Send className="w-5 h-5 text-green-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Export Preview</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Export JSON</h3>
               </div>
               <button
                 onClick={() => setShowExportPreview(false)}
@@ -512,20 +509,23 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-gray-700">JSON Data for Service</h4>
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-700">Structured Format</h4>
+                  </div>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(generateExportData(), null, 2));
+                      const data = generateExportData();
+                      navigator.clipboard.writeText(JSON.stringify(data.aiFormats.structured, null, 2));
                     }}
                     className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 transition-colors"
                   >
-                    Copy to Clipboard
+                    Copy JSON
                   </button>
                 </div>
-                <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                  {JSON.stringify(generateExportData(), null, 2)}
+                <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed bg-white p-3 rounded border max-h-96">
+                  {JSON.stringify(generateExportData().aiFormats.structured, null, 2)}
                 </pre>
               </div>
             </div>
@@ -533,14 +533,20 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
             <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
               <button
                 onClick={() => {
-                  // Here you would typically send to your service
-                  console.log('Sending to service:', generateExportData());
-                  alert('Data would be sent to service (check console for details)');
+                  const data = generateExportData();
+                  const formatData = data.aiFormats.structured;
+                  
+                  console.log('Sending structured format to AI service:', formatData);
+                  
+                  const textToCopy = JSON.stringify(formatData, null, 2);
+                  navigator.clipboard.writeText(textToCopy);
+                  
+                  alert('Structured format copied to clipboard! You can now paste it into your AI service.');
                 }}
                 className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 <Send size={16} />
-                Send to Service
+                Copy JSON
               </button>
               <button
                 onClick={() => setShowExportPreview(false)}
@@ -553,7 +559,9 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         </div>
       )}
 
-      <style jsx>{`
+
+
+      <style>{`
         .comment-highlight {
           background: linear-gradient(120deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
           border-radius: 4px;
