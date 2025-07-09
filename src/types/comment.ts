@@ -6,27 +6,13 @@ export interface Comment {
   comment: string;
   timestamp: Date;
   author?: string;
-  markdownFrom?: number;
-  markdownTo?: number;
-  markdownText?: string;
+  selectedElements?: string[]; // IDs of the markdown elements that were selected
 }
 
 export interface CommentSelection {
   from: number;
   to: number;
   text: string;
-}
-
-export interface PositionMapping {
-  renderedStart: number;
-  renderedEnd: number;
-  markdownStart: number;
-  markdownEnd: number;
-  text: string;
-}
-
-export interface MarkdownPosition {
-  offset: number;
-  line: number;
-  column: number;
+  selectedElements?: string[];
+  originalRange?: Range;
 }

@@ -1,259 +1,243 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
-import { Node } from 'unist';
-import { PositionMapping } from '../types/comment';
+import remarkRehype from 'remark-rehype';
+import rehypeStringify from 'rehype-stringify';
+import { visit } from 'unist-util-visit';
+import type { Node, Position } from 'unist';
+import type { Root } from 'mdast';
 
-interface MarkdownNode extends Node {
-  type: string;
-  value?: string;
-  children?: MarkdownNode[];
-  position?: {
-    start: { offset: number; line: number; column: number };
-    end: { offset: number; line: number; column: number };
+export interface PositionMapping {
+  [elementId: string]: {
+    start: number;
+    end: number;
+    type: string;
+    content?: string;
   };
-  depth?: number;
-  ordered?: boolean;
-  spread?: boolean;
-  url?: string;
-  title?: string;
-  alt?: string;
 }
 
-export class MarkdownPositionMapper {
-  private originalMarkdown: string;
-  private renderedText: string = '';
-  private positionMappings: PositionMapping[] = [];
-  private ast: MarkdownNode;
+export interface MarkdownParseResult {
+  html: string;
+  positionMap: PositionMapping;
+}
 
-  constructor(markdown: string) {
-    this.originalMarkdown = markdown;
-    this.ast = this.parseMarkdown(markdown);
-    this.generateRenderedText();
-  }
+interface NodeWithData extends Node {
+  position?: Position;
+  type: string;
+  value?: string;
+  children?: NodeWithData[];
+  tagName?: string;
+  data?: {
+    hName?: string;
+    hProperties?: Record<string, any>;
+    elementId?: string;
+  };
+}
 
-  private parseMarkdown(markdown: string): MarkdownNode {
-    const processor = unified().use(remarkParse, { position: true });
-    return processor.parse(markdown) as MarkdownNode;
-  }
+let idCounter = 0;
 
-  private generateRenderedText(): void {
-    this.renderedText = '';
-    this.positionMappings = [];
-    this.traverseNode(this.ast);
-  }
+const generateElementId = (type: string): string => {
+  return `md-${type}-${++idCounter}`;
+};
 
-  private traverseNode(node: MarkdownNode): void {
-    switch (node.type) {
-      case 'root':
-        this.processChildren(node);
-        break;
-      
-      case 'paragraph':
-        this.processChildren(node);
-        if (this.hasNextSibling(node)) {
-          this.addText('\n');
+export const parseMarkdownWithPositions = async (markdown: string): Promise<MarkdownParseResult> => {
+  const positionMap: PositionMapping = {};
+  
+  // Reset counter for consistent IDs
+  idCounter = 0;
+
+  // Plugin to add IDs and collect positions
+  const addIdsAndPositions = () => {
+    return (tree: Root) => {
+      visit(tree, (node: NodeWithData) => {
+        if (node.position && shouldAddId(node)) {
+          const elementId = generateElementId(node.type);
+          
+          const start = node.position.start.offset ?? 0;
+          const end = node.position.end.offset ?? 0;
+          
+          positionMap[elementId] = {
+            start,
+            end,
+            type: node.type,
+            content: getNodeContent(node, markdown, start, end),
+          };
+
+          // Add data for rehype conversion
+          if (!node.data) {
+            node.data = {};
+          }
+          if (!node.data.hProperties) {
+            node.data.hProperties = {};
+          }
+          node.data.hProperties.id = elementId;
         }
-        break;
-      
-      case 'heading':
-        this.processChildren(node);
-        if (this.hasNextSibling(node)) {
-          this.addText('\n');
-        }
-        break;
-      
-      case 'text':
-        if (node.value && node.position) {
-          this.addMappedText(
-            node.value,
-            node.position.start.offset,
-            node.position.end.offset
-          );
-        }
-        break;
-      
-      case 'strong':
-      case 'emphasis':
-        this.processChildren(node);
-        break;
-      
-      case 'code':
-        if (node.value && node.position) {
-          this.addMappedText(
-            node.value,
-            node.position.start.offset,
-            node.position.end.offset
-          );
-        }
-        break;
-      
-      case 'inlineCode':
-        if (node.value && node.position) {
-          this.addMappedText(
-            node.value,
-            node.position.start.offset + 1,
-            node.position.end.offset - 1
-          );
-        }
-        break;
-      
-      case 'link':
-        this.processChildren(node);
-        break;
-      
-      case 'list':
-        this.processChildren(node);
-        if (this.hasNextSibling(node)) {
-          this.addText('\n');
-        }
-        break;
-      
-      case 'listItem':
-        this.addText('• ');
-        this.processChildren(node);
-        this.addText('\n');
-        break;
-      
-      case 'blockquote':
-        this.processChildren(node);
-        if (this.hasNextSibling(node)) {
-          this.addText('\n');
-        }
-        break;
-      
-      case 'thematicBreak':
-        this.addText('---');
-        if (this.hasNextSibling(node)) {
-          this.addText('\n');
-        }
-        break;
-      
-      case 'break':
-        this.addText('\n');
-        break;
-      
-      default:
-        this.processChildren(node);
-        break;
-    }
-  }
-
-  private hasNextSibling(node: MarkdownNode): boolean {
-    return true;
-  }
-
-  private processChildren(node: MarkdownNode): void {
-    if (node.children) {
-      node.children.forEach(child => this.traverseNode(child));
-    }
-  }
-
-  private addText(text: string): void {
-    this.renderedText += text;
-  }
-
-  private addMappedText(text: string, markdownStart: number, markdownEnd: number): void {
-    const renderedStart = this.renderedText.length;
-    this.renderedText += text;
-    const renderedEnd = this.renderedText.length;
-
-    this.positionMappings.push({
-      renderedStart,
-      renderedEnd,
-      markdownStart,
-      markdownEnd,
-      text
-    });
-  }
-
-  public getRenderedText(): string {
-    return this.renderedText;
-  }
-
-  public getPositionMappings(): PositionMapping[] {
-    return this.positionMappings;
-  }
-
-  public mapRenderedToMarkdown(renderedStart: number, renderedEnd: number): { start: number; end: number; text: string } | null {
-    const overlappingMappings = this.positionMappings.filter(mapping => 
-      mapping.renderedStart < renderedEnd && mapping.renderedEnd > renderedStart
-    );
-
-    if (overlappingMappings.length === 0) {
-      return null;
-    }
-
-    overlappingMappings.sort((a, b) => a.renderedStart - b.renderedStart);
-
-    const firstMapping = overlappingMappings[0];
-    const lastMapping = overlappingMappings[overlappingMappings.length - 1];
-
-    const startMapping = firstMapping;
-    const startOffset = Math.max(0, renderedStart - startMapping.renderedStart);
-    const markdownStartOffset = this.calculateMarkdownOffset(startMapping, startOffset);
-
-    const endMapping = lastMapping;
-    const endOffset = Math.min(endMapping.renderedEnd - endMapping.renderedStart, renderedEnd - endMapping.renderedStart);
-    const markdownEndOffset = this.calculateMarkdownOffset(endMapping, endOffset);
-
-    const markdownStart = startMapping.markdownStart + markdownStartOffset;
-    const markdownEnd = endMapping.markdownStart + markdownEndOffset;
-
-    const markdownText = this.originalMarkdown.substring(markdownStart, markdownEnd);
-
-    return {
-      start: markdownStart,
-      end: markdownEnd,
-      text: markdownText
+      });
     };
-  }
+  };
 
-  private calculateMarkdownOffset(mapping: PositionMapping, textOffset: number): number {
-    return textOffset;
-  }
+  const processor = unified()
+    .use(remarkParse)
+    .use(addIdsAndPositions)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeStringify, { allowDangerousHtml: true });
 
-  public mapMarkdownToRendered(markdownStart: number, markdownEnd: number): { start: number; end: number; text: string } | null {
-    const overlappingMappings = this.positionMappings.filter(mapping =>
-      mapping.markdownStart < markdownEnd && mapping.markdownEnd > markdownStart
-    );
+  const result = await processor.process(markdown);
+  let html = String(result);
 
-    if (overlappingMappings.length === 0) {
-      return null;
-    }
+  // Post-process HTML to add spans around text nodes
+  html = addTextSpansToHtml(html, markdown, positionMap);
+  
+  return {
+    html,
+    positionMap,
+  };
+};
 
-    overlappingMappings.sort((a, b) => a.markdownStart - b.markdownStart);
-
-    const firstMapping = overlappingMappings[0];
-    const lastMapping = overlappingMappings[overlappingMappings.length - 1];
-
-    const renderedStart = firstMapping.renderedStart + Math.max(0, markdownStart - firstMapping.markdownStart);
-    const renderedEnd = lastMapping.renderedStart + Math.min(lastMapping.renderedEnd - lastMapping.renderedStart, markdownEnd - lastMapping.markdownStart);
-
-    const renderedText = this.renderedText.substring(renderedStart, renderedEnd);
-
-    return {
-      start: renderedStart,
-      end: renderedEnd,
-      text: renderedText
-    };
-  }
-
-  public getMappingSummary(): string {
-    let summary = `Original Markdown (${this.originalMarkdown.length} chars):\n`;
-    summary += `"${this.originalMarkdown.substring(0, 100)}${this.originalMarkdown.length > 100 ? "..." : ""}"\n\n`;
+// Post-process HTML to add spans around text nodes
+const addTextSpansToHtml = (html: string, markdown: string, positionMap: PositionMapping): string => {
+  try {
+    // Create a DOM parser to work with the HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
     
-    summary += `Rendered Text (${this.renderedText.length} chars):\n`;
-    summary += `"${this.renderedText.substring(0, 100)}${this.renderedText.length > 100 ? "..." : ""}"\n\n`;
+    // Find all elements with md- IDs
+    const mdElements = doc.querySelectorAll('[id^="md-"]');
     
-    summary += `Position Mappings (${this.positionMappings.length} total):\n`;
-    this.positionMappings.slice(0, 5).forEach((mapping, index) => {
-      summary += `${index + 1}. Rendered[${mapping.renderedStart}-${mapping.renderedEnd}] -> Markdown[${mapping.markdownStart}-${mapping.markdownEnd}]: "${mapping.text}"\n`;
+    mdElements.forEach(element => {
+      // Process text nodes within this element
+      wrapTextNodesInElement(element, markdown, positionMap);
     });
     
-    if (this.positionMappings.length > 5) {
-      summary += `... and ${this.positionMappings.length - 5} more mappings\n`;
-    }
-    
-    return summary;
+    // Return the modified HTML
+    return doc.body.innerHTML;
+  } catch (error) {
+    console.warn('Failed to add text spans:', error);
+    return html; // Return original HTML if processing fails
   }
-} 
+};
+
+// Wrap text nodes in an element with spans
+const wrapTextNodesInElement = (element: Element, markdown: string, positionMap: PositionMapping) => {
+  const elementId = element.getAttribute('id');
+  if (!elementId || !positionMap[elementId]) return;
+  
+  const elementMapping = positionMap[elementId];
+  
+  // Get direct text nodes (not inside child md- elements)
+  const textNodes: Text[] = [];
+  const walker = document.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        // Only accept text nodes that are not inside child md- elements
+        let parent = node.parentElement;
+        while (parent && parent !== element) {
+          if (parent.id && parent.id.startsWith('md-')) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          parent = parent.parentElement;
+        }
+        return node.textContent && node.textContent.trim() ? 
+          NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    }
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    textNodes.push(node as Text);
+  }
+  
+  // Wrap each text node in a span
+  textNodes.forEach(textNode => {
+    if (textNode.textContent && textNode.textContent.trim()) {
+      const spanId = generateElementId('textSpan');
+      
+      // Calculate approximate position based on element position
+      const textContent = textNode.textContent;
+      const elementContent = elementMapping.content || '';
+      const textIndex = elementContent.indexOf(textContent.trim());
+      
+      if (textIndex !== -1) {
+        const textStart = elementMapping.start + textIndex;
+        const textEnd = textStart + textContent.trim().length;
+        
+        // Add to position map
+        positionMap[spanId] = {
+          start: textStart,
+          end: textEnd,
+          type: 'textSpan',
+          content: textContent.trim(),
+        };
+        
+        // Create span element
+        const span = document.createElement('span');
+        span.id = spanId;
+        span.textContent = textContent;
+        
+        // Replace text node with span
+        if (textNode.parentNode) {
+          textNode.parentNode.replaceChild(span, textNode);
+        }
+      }
+    }
+  });
+};
+
+
+
+
+
+const shouldAddId = (node: NodeWithData): boolean => {
+  // Add IDs to these markdown elements
+  const typesToTrack = [
+    'heading',
+    'paragraph', 
+    'blockquote',
+    'list',
+    'listItem',
+    'code',
+    'emphasis',
+    'strong',
+    'link',
+    'image',
+    'table',
+    'tableRow',
+    'tableCell',
+    'thematicBreak',
+    'inlineCode',
+    'textSpan' // Include our new text span type
+  ];
+  
+  return typesToTrack.includes(node.type);
+};
+
+const getNodeContent = (node: NodeWithData, markdown: string, start: number, end: number): string => {
+  if (start >= 0 && end > start && end <= markdown.length) {
+    return markdown.slice(start, end);
+  }
+  return '';
+};
+
+// Helper function to get position info for a specific element ID
+export const getElementPosition = (
+  elementId: string, 
+  positionMap: PositionMapping
+): { start: number; end: number } | null => {
+  const mapping = positionMap[elementId];
+  return mapping ? { start: mapping.start, end: mapping.end } : null;
+};
+
+// Helper function to find element ID by position
+export const findElementByPosition = (
+  position: number,
+  positionMap: PositionMapping
+): string | null => {
+  for (const [elementId, mapping] of Object.entries(positionMap)) {
+    if (position >= mapping.start && position <= mapping.end) {
+      return elementId;
+    }
+  }
+  return null;
+}; 

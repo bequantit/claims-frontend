@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FileText } from 'lucide-react';
 import CommentableViewer from './components/CommentableViewer';
+import { PositionMapping } from './utils/markdownPositionMapper';
 
 const sampleContent = `## Policy Summary
 
@@ -127,6 +128,10 @@ The initial coverage position is to issue a reservation of rights letter. This r
 `;
 
 function App() {
+  const handlePositionMapReady = (mapping: PositionMapping, html: string) => {
+    // Position mapping ready for any future use
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12">
       <div className="max-w-7xl mx-auto px-6">
@@ -144,7 +149,10 @@ function App() {
           </p>
         </div>
         
-        <CommentableViewer content={sampleContent} />
+        <CommentableViewer 
+          content={sampleContent} 
+          onPositionMapReady={handlePositionMapReady}
+        />
       </div>
     </div>
   );
