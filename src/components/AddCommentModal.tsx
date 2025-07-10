@@ -1,24 +1,16 @@
 import React, { useRef, useEffect } from 'react';
 import { MessageSquare, X } from 'lucide-react';
-import { CommentSelection } from '../types/comment';
+import { useCommentContext } from '../contexts/CommentContext';
 
-interface AddCommentModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  selectedText: CommentSelection | null;
-  comment: string;
-  onCommentChange: (value: string) => void;
-  onSubmit: () => void;
-}
-
-const AddCommentModal: React.FC<AddCommentModalProps> = ({
-  isOpen,
-  onClose,
-  selectedText,
-  comment,
-  onCommentChange,
-  onSubmit,
-}) => {
+const AddCommentModal: React.FC = () => {
+  const {
+    showCommentDialog: isOpen,
+    closeModal: onClose,
+    selectedText,
+    newComment: comment,
+    setNewComment: onCommentChange,
+    onSubmitComment: onSubmit,
+  } = useCommentContext();
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Click outside to close dialog

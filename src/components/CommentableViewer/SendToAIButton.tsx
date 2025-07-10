@@ -1,18 +1,10 @@
 import React from 'react';
 import { Send } from 'lucide-react';
+import { useCommentContext } from '../../contexts/CommentContext';
 import styles from '../../styles/CommentableViewer.module.css';
 
-interface SendToAIButtonProps {
-  onSendToAI: () => void;
-  sendingToAI: boolean;
-  hasComments: boolean;
-}
-
-const SendToAIButton: React.FC<SendToAIButtonProps> = ({
-  onSendToAI,
-  sendingToAI,
-  hasComments
-}) => {
+const SendToAIButton: React.FC = () => {
+  const { onSendToAI, sendingToAI, hasComments } = useCommentContext();
   if (!hasComments) return null;
 
   return (

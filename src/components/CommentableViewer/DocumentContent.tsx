@@ -1,17 +1,17 @@
 import React from 'react';
+import { useCommentContext } from '../../contexts/CommentContext';
 import styles from '../../styles/CommentableViewer.module.css';
 
 interface DocumentContentProps {
-  isLoading: boolean;
   htmlContent: string;
   onMouseUp: () => void;
 }
 
 const DocumentContent: React.FC<DocumentContentProps> = ({
-  isLoading,
   htmlContent,
   onMouseUp
 }) => {
+  const { isLoading } = useCommentContext();
   return (
     <div className="prose prose-lg prose-slate max-w-none">
       {isLoading ? (

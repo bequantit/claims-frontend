@@ -15,6 +15,7 @@ import { useCommentHighlighting } from '../hooks/useCommentHighlighting';
 import { useMarkdownParser } from '../hooks/useMarkdownParser';
 import { useAIIntegration } from '../hooks/useAIIntegration';
 import { useCommentModal } from '../hooks/useCommentModal';
+import { CommentProvider } from '../contexts/CommentContext';
 import '../styles/index.css';
 import styles from '../styles/CommentableViewer.module.css';
 
@@ -100,67 +101,72 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({
     deleteCommentFromState(commentId);
   };
 
-
-
+  // Prepare context value
+  const contextValue = {
+    // Comment data
+    comments,
+    hoveredComment,
+    
+    // Comment actions
+    onCommentHover: (commentId: string | null) => handleCommentHover(commentId, comments),
+    onDeleteComment: deleteComment,
+    
+    // Selection state
+    selectedText,
+    
+    // Modal state
+    showCommentDialog,
+    newComment,
+    setNewComment,
+    openModal,
+    closeModal,
+    onSubmitComment: addComment,
+    
+    // Position data
+    selectionPosition,
+    
+    // Loading states
+    isLoading,
+    sendingToAI,
+    
+    // AI actions
+    onSendToAI: () => sendToAI(comments),
+    hasComments: comments.length > 0,
+  };
 
   return (
-    <div className={`${styles.container} ${className}`}>
-      {/* Document Content */}
-      <div className={styles.documentWrapper}>
-        <div className={styles.documentContent}>
-          <div className={styles.documentInner}>
-          <DocumentHeader />
+    <CommentProvider value={contextValue}>
+      <div className={`${styles.container} ${className}`}>
+        {/* Document Content */}
+        <div className={styles.documentWrapper}>
+          <div className={styles.documentContent}>
+            <div className={styles.documentInner}>
+            <DocumentHeader />
 
-          <DocumentContent 
-            isLoading={isLoading}
-            htmlContent={htmlContent}
-            onMouseUp={handleTextSelection}
-          />
-          
-          <InlineCommentsList
-            comments={comments}
-            hoveredComment={hoveredComment}
-            onCommentHover={(commentId) => handleCommentHover(commentId, comments)}
-            onDeleteComment={deleteComment}
-          />
-          
-          {selectedText && (
-            <FloatingCommentButton
-              position={selectionPosition}
-              onClick={openModal}
+            <DocumentContent 
+              htmlContent={htmlContent}
+              onMouseUp={handleTextSelection}
             />
-          )}
+            
+            <InlineCommentsList />
+            
+            <FloatingCommentButton />
 
-          {/* Modern Comment Dialog */}
-          <AddCommentModal
-            isOpen={showCommentDialog}
-            onClose={closeModal}
-            selectedText={selectedText}
-            comment={newComment}
-            onCommentChange={setNewComment}
-            onSubmit={addComment}
-          />
-        </div>
+            {/* Modern Comment Dialog */}
+            <AddCommentModal />
+          </div>
+          </div>
+
+          <CommentSidebar />
         </div>
 
-        <CommentSidebar
-          comments={comments}
-          hoveredComment={hoveredComment}
-          onCommentHover={(commentId) => handleCommentHover(commentId, comments)}
-        />
+        <SendToAIButton />
+
+        {/* Export Preview Dialog */}
+        {/* This section is removed as showExportPreview state is removed */}
+
       </div>
-
-      <SendToAIButton
-        onSendToAI={() => sendToAI(comments)}
-        sendingToAI={sendingToAI}
-        hasComments={comments.length > 0}
-      />
-
-      {/* Export Preview Dialog */}
-      {/* This section is removed as showExportPreview state is removed */}
-
-
-    </div>
+    </CommentProvider>
   );
 };
 

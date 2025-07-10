@@ -1,28 +1,24 @@
 import React from 'react';
 import { MessageSquare } from 'lucide-react';
+import { useCommentContext } from '../../contexts/CommentContext';
 import styles from '../../styles/CommentableViewer.module.css';
 
-interface FloatingCommentButtonProps {
-  position: { x: number; y: number };
-  onClick: () => void;
-}
+const FloatingCommentButton: React.FC = () => {
+  const { selectedText, selectionPosition, openModal } = useCommentContext();
 
-const FloatingCommentButton: React.FC<FloatingCommentButtonProps> = ({
-  position,
-  onClick
-}) => {
+  if (!selectedText) return null;
   return (
-    <div 
-      className={styles.floatingCommentButton}
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-      }}
-    >
-      <button
-        onClick={onClick}
-        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 border border-blue-400"
+          <div 
+        className={styles.floatingCommentButton}
+        style={{
+          left: `${selectionPosition.x}px`,
+          top: `${selectionPosition.y}px`,
+        }}
       >
+        <button
+          onClick={openModal}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 border border-blue-400"
+        >
         <MessageSquare size={16} />
         <span className="text-sm font-medium">Comment</span>
       </button>

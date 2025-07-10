@@ -1,19 +1,10 @@
 import React from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Comment } from '../../types/comment';
+import { useCommentContext } from '../../contexts/CommentContext';
 import SidebarCommentItem from './SidebarCommentItem';
 
-interface CommentSidebarProps {
-  comments: Comment[];
-  hoveredComment: string | null;
-  onCommentHover: (commentId: string | null) => void;
-}
-
-const CommentSidebar: React.FC<CommentSidebarProps> = ({
-  comments,
-  hoveredComment,
-  onCommentHover
-}) => {
+const CommentSidebar: React.FC = () => {
+  const { comments, hoveredComment, onCommentHover } = useCommentContext();
   return (
     <div className="w-80 bg-gradient-to-b from-gray-50 to-gray-100 border-l border-gray-200 flex flex-col">
       {/* Sidebar Header */}

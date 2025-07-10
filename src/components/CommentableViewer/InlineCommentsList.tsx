@@ -1,22 +1,11 @@
 import React from 'react';
-import { Comment } from '../../types/comment';
+import { useCommentContext } from '../../contexts/CommentContext';
 import { getCommentPosition } from '../../utils/commentUtils';
 import InlineComment from './InlineComment';
 import styles from '../../styles/CommentableViewer.module.css';
 
-interface InlineCommentsListProps {
-  comments: Comment[];
-  hoveredComment: string | null;
-  onCommentHover: (commentId: string | null) => void;
-  onDeleteComment: (commentId: string) => void;
-}
-
-const InlineCommentsList: React.FC<InlineCommentsListProps> = ({
-  comments,
-  hoveredComment,
-  onCommentHover,
-  onDeleteComment
-}) => {
+const InlineCommentsList: React.FC = () => {
+  const { comments, hoveredComment, onCommentHover, onDeleteComment } = useCommentContext();
   return (
     <div className={styles.inlineCommentsContainer}>
       {comments.map((comment) => {
