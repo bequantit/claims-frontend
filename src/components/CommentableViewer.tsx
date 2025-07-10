@@ -1,33 +1,83 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Plus, X, Edit3, FileText, Clock, User, Send, Eye } from 'lucide-react';
+import { MessageSquare, Plus, X, Edit3, FileText, Clock, User, Send } from 'lucide-react';
 import { Comment, CommentSelection } from '../types/comment';
 import { parseMarkdownWithPositions, PositionMapping } from '../utils/markdownPositionMapper';
 import { setupSessionId } from '../utils/setupSession';
-
-import claim_summary from '../../data/EMC_vs_BRI/summary_v7_gemini-2.5-pro.md?raw';
+import AddCommentModal from './AddCommentModal';
 
 interface CommentableViewerProps {
   content: string;
+  summary?: string;
   className?: string;
   onPositionMapReady?: (positionMap: PositionMapping, html: string) => void;
+  onContentUpdate?: (newContent: string) => void;
+  clearComments?: boolean;
+  onCommentsClear?: () => void;
+  resetObservationCount?: boolean;
+  onObservationCountReset?: () => void;
 }
 
 const sessionId = setupSessionId();
 
-const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, className = '', onPositionMapReady }) => {
+const CommentableViewer: React.FC<CommentableViewerProps> = ({ 
+  content, 
+  summary = '',
+  className = '', 
+  onPositionMapReady,
+  onContentUpdate,
+  clearComments = false,
+  onCommentsClear,
+  resetObservationCount,
+  onObservationCountReset
+}) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [selectedText, setSelectedText] = useState<CommentSelection | null>(null);
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [hoveredComment, setHoveredComment] = useState<string | null>(null);
   const [selectionPosition, setSelectionPosition] = useState({ x: 0, y: 0 });
-  const [showExportPreview, setShowExportPreview] = useState(false);
   const [htmlContent, setHtmlContent] = useState('');
   const [positionMap, setPositionMap] = useState<PositionMapping>({});
   const [isLoading, setIsLoading] = useState(true);
   const [observationCount, setObservationCount] = useState(0);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const exportDialogRef = useRef<HTMLDivElement>(null);
+  const [sendingToAI, setSendingToAI] = useState(false);
+
+  // Clear all comments function
+  const clearAllComments = () => {
+    // Remove highlighting from all comments
+    comments.forEach(comment => {
+      if (comment.selectedElements) {
+        removeHighlightFromElements(comment.selectedElements);
+      }
+    });
+    
+    // Clear comments state
+    setComments([]);
+    
+    // Clear any active selections or dialogs
+    setSelectedText(null);
+    setShowCommentDialog(false);
+    setHoveredComment(null);
+    
+    console.log('All comments cleared');
+  };
+
+  // Effect to handle clearing comments when prop changes
+  useEffect(() => {
+    if (clearComments) {
+      clearAllComments();
+      onCommentsClear?.();
+    }
+  }, [clearComments]);
+
+  // Effect to reset observation count when prop changes
+  useEffect(() => {
+    if (resetObservationCount) {
+      setObservationCount(0);
+      console.log('Observation count reset to 0');
+      onObservationCountReset?.();
+    }
+  }, [resetObservationCount]);
 
   // Parse markdown with position mapping
   useEffect(() => {
@@ -598,7 +648,7 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
   // Generate export data
   const generateExportData = () => {
     return {
-      claim_summary: claim_summary,
+      claim_summary: summary,
       observation: {
         document: {
           content: content,
@@ -625,19 +675,55 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
     };
   };
 
-  // Click outside to close dialog
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
-        setShowCommentDialog(false);
-      }
-      if (exportDialogRef.current && !exportDialogRef.current.contains(event.target as Node)) {
-        setShowExportPreview(false);
-      }
-    };
+  // Send to AI function
+  const sendToAI = async () => {
+    setSendingToAI(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = import.meta.env.VITE_API_TOKEN;
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'conversation-id': sessionId,
+          'observation-number': String(observationCount),
+          'token': token,
+        },
+        body: JSON.stringify(generateExportData(), null, 2),
+      });
+    
+      const data = await response.json();
+      console.log('AI response:', data);
+      console.log("Session ID:", sessionId);
+      console.log("API URL:", apiUrl);
+
+      // Handle the AI response
+      if (data.analysis && data.conclusion) {
+        // Combine analysis and conclusion
+        const newContent = data.analysis + '\n\n' + data.conclusion;
+        
+        // Clear all existing comments
+        clearAllComments();
+        
+        // Update the content (this will trigger recalculation of positions)
+        onContentUpdate?.(newContent);
+        
+        // Increment observation count
+        setObservationCount(prev => prev + 1);
+        
+        console.log('Content updated with AI response');
+      }
+    } catch (error) {
+      console.error('Failed to send to AI:', error);
+    } finally {
+      setSendingToAI(false);
+    }
+  };
+
+  // Click outside to close dialog (only for comment modal now)
+  useEffect(() => {
+    // No longer needed since export dialog is removed
   }, []);
 
   return (
@@ -741,64 +827,14 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
           )}
 
           {/* Modern Comment Dialog */}
-          {showCommentDialog && (
-            <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
-              <div 
-                ref={dialogRef} 
-                className="bg-white rounded-2xl p-8 max-w-lg w-full mx-4 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-300"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <MessageSquare className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900">Add Comment</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowCommentDialog(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                
-                <div className="mb-6">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Selected text:</p>
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
-                    <p className="text-sm text-gray-800 font-medium leading-relaxed mb-2">"{selectedText?.text}"</p>
-                  </div>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Your comment:</label>
-                  <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Share your thoughts on this text..."
-                    className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200 bg-gray-50 focus:bg-white"
-                    rows={4}
-                    autoFocus
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={addComment}
-                    disabled={!newComment.trim()}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                  >
-                    Add Comment
-                  </button>
-                  <button
-                    onClick={() => setShowCommentDialog(false)}
-                    className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <AddCommentModal
+            isOpen={showCommentDialog}
+            onClose={() => setShowCommentDialog(false)}
+            selectedText={selectedText}
+            comment={newComment}
+            onCommentChange={setNewComment}
+            onSubmit={addComment}
+          />
         </div>
         </div>
 
@@ -867,105 +903,29 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
         </div>
       </div>
 
-      {/* Export Button */}
+      {/* Send to AI Button */}
       {comments.length > 0 && (
         <div className="mt-6 flex justify-center">
           <button
-            onClick={() => setShowExportPreview(true)}
-            className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+            onClick={sendToAI}
+            disabled={sendingToAI}
+            className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
           >
-            <Eye size={20} />
-            <span>Preview Export Data</span>
+            {sendingToAI ? (
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <Send size={20} />
+            )}
+            <span>{sendingToAI ? 'Sending to AI...' : 'Send to AI'}</span>
           </button>
         </div>
       )}
 
       {/* Export Preview Dialog */}
-      {showExportPreview && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in-0 duration-300">
-          <div 
-            ref={exportDialogRef} 
-            className="bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-300 max-h-[80vh] overflow-hidden flex flex-col"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Send className="w-5 h-5 text-green-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900">Export Preview</h3>
-              </div>
-              <button
-                onClick={() => setShowExportPreview(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-gray-700">JSON Data for Service</h4>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(generateExportData(), null, 2));
-                    }}
-                    className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 transition-colors"
-                  >
-                    Copy to Clipboard
-                  </button>
-                </div>
-                <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                  {JSON.stringify(generateExportData(), null, 2)}
-                </pre>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  // Here you would typically send to your service
-                  //alert('Data would be sent to service (check console for details)');
-                  const apiUrl = import.meta.env.VITE_API_URL;
-                  const token = import.meta.env.VITE_API_TOKEN;
-
-                  setObservationCount(observationCount+1);
-                  const sendData = async () => {
-                    const response = await fetch(apiUrl, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'conversation-id': sessionId,
-                        'observation-number': String(observationCount),
-                        'token': token,
-                      },
-                      body: JSON.stringify(generateExportData(), null, 2),
-                    });
-                  
-                    const data = await response.json();
-                    console.log('Server response:', data);
-                  };
-                  
-                  sendData();
-                  console.log("Session ID:", sessionId);
-                  console.log("API URL:", apiUrl);
-
-                }}
-                className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-              >
-                <Send size={16} />
-                Send to Service
-              </button>
-              <button
-                onClick={() => setShowExportPreview(false)}
-                className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* This section is removed as showExportPreview state is removed */}
 
       <style>{`
         .comment-highlight {

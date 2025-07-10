@@ -14,4 +14,12 @@ export const setupSessionId = () => {
   
     return id;
   };
+
+export const generateNewSessionId = () => {
+    // Generate a new UUID and replace the existing session ID
+    const newId = crypto.randomUUID();
+    sessionStorage.setItem("session_id", newId);
+    console.log('Generated new session ID:', newId);
+    return newId;
+  };
   
