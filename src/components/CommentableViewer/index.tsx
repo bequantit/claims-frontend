@@ -1,0 +1,8 @@
+export { default as DocumentHeader } from './DocumentHeader';
+export { default as DocumentContent } from './DocumentContent';
+export { default as InlineComment } from './InlineComment';
+export { default as InlineCommentsList } from './InlineCommentsList';
+export { default as FloatingCommentButton } from './FloatingCommentButton';
+export { default as CommentSidebar } from './CommentSidebar';
+export { default as SidebarCommentItem } from './SidebarCommentItem';
+export { default as SendToAIButton } from './SendToAIButton';

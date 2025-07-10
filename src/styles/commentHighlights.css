@@ -1,0 +1,30 @@
+/* Comment highlighting and interaction styles */
+
+.comment-highlight {
+  background: linear-gradient(120deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 1px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+}
+
+.comment-hover {
+  background: linear-gradient(120deg, rgba(59, 130, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%) !important;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.5) !important;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.comment-highlight:hover {
+  background: linear-gradient(120deg, rgba(59, 130, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%);
+  border-bottom-color: rgba(59, 130, 246, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.comment-highlight[data-comment-id$="-hover"] {
+  background: linear-gradient(120deg, rgba(255, 235, 59, 0.4) 0%, rgba(255, 193, 7, 0.4) 100%) !important;
+  border-bottom: 2px solid rgba(255, 193, 7, 0.8) !important;
+  animation: pulse-yellow 1.5s ease-in-out infinite;
+}

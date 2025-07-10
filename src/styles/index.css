@@ -1,0 +1,12 @@
+/* Central CSS imports for CommentableViewer components */
+
+/* Typography styles for document content */
+@import './typography.css';
+
+/* Comment highlighting and interaction styles */
+@import './commentHighlights.css';
+
+/* Animation keyframes */
+@import './animations.css';
+
+/* Note: CommentableViewer.module.css is imported directly as a CSS module */ 
