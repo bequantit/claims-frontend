@@ -2,12 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Plus, X, Edit3, FileText, Clock, User, Send, Eye } from 'lucide-react';
 import { Comment, CommentSelection } from '../types/comment';
 import { parseMarkdownWithPositions, PositionMapping } from '../utils/markdownPositionMapper';
+import { setupSessionId } from '../utils/setupSession';
+
+import claim_summary from '../../data/EMC_vs_BRI/summary_v7_gemini-2.5-pro.md?raw';
 
 interface CommentableViewerProps {
   content: string;
   className?: string;
   onPositionMapReady?: (positionMap: PositionMapping, html: string) => void;
 }
+
+const sessionId = setupSessionId();
 
 const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, className = '', onPositionMapReady }) => {
   const [comments, setComments] = useState<Comment[]>([]);
@@ -20,6 +25,7 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
   const [htmlContent, setHtmlContent] = useState('');
   const [positionMap, setPositionMap] = useState<PositionMapping>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [observationCount, setObservationCount] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const exportDialogRef = useRef<HTMLDivElement>(null);
 
@@ -592,26 +598,29 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
   // Generate export data
   const generateExportData = () => {
     return {
-      document: {
-        content: content,
-        title: "Document Review",
-        timestamp: new Date().toISOString(),
-      },
-      comments: comments.map(comment => ({
-        id: comment.id,
-        selectedText: comment.text,
-        comment: comment.comment,
-        author: comment.author,
-        timestamp: comment.timestamp.toISOString(),
-        position: {
-          from: comment.from,
-          to: comment.to,
+      claim_summary: claim_summary,
+      observation: {
+        document: {
+          content: content,
+          title: "Document Review",
+          timestamp: new Date().toISOString(),
         },
-      })),
-      summary: {
-        totalComments: comments.length,
-        authors: [...new Set(comments.map(c => c.author))],
-        createdAt: new Date().toISOString(),
+        comments: comments.map(comment => ({
+          id: comment.id,
+          selectedText: comment.text,
+          comment: comment.comment,
+          author: comment.author,
+          timestamp: comment.timestamp.toISOString(),
+          position: {
+            start: comment.from,
+            end: comment.to,
+          },
+        })),
+        summary: {
+          totalComments: comments.length,
+          authors: [...new Set(comments.map(c => c.author))],
+          createdAt: new Date().toISOString(),
+        }
       }
     };
   };
@@ -916,7 +925,31 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
               <button
                 onClick={() => {
                   // Here you would typically send to your service
-                  alert('Data would be sent to service (check console for details)');
+                  //alert('Data would be sent to service (check console for details)');
+                  const apiUrl = import.meta.env.VITE_API_URL;
+                  const token = import.meta.env.VITE_API_TOKEN;
+
+                  setObservationCount(observationCount+1);
+                  const sendData = async () => {
+                    const response = await fetch(apiUrl, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'conversation-id': sessionId,
+                        'observation-number': String(observationCount),
+                        'token': token,
+                      },
+                      body: JSON.stringify(generateExportData(), null, 2),
+                    });
+                  
+                    const data = await response.json();
+                    console.log('Server response:', data);
+                  };
+                  
+                  sendData();
+                  console.log("Session ID:", sessionId);
+                  console.log("API URL:", apiUrl);
+
                 }}
                 className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
