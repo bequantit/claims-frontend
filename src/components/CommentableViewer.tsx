@@ -757,21 +757,6 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({ content, classNam
                   <p className="text-sm font-medium text-gray-700 mb-3">Selected text:</p>
                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
                     <p className="text-sm text-gray-800 font-medium leading-relaxed mb-2">"{selectedText?.text}"</p>
-                    {selectedText?.selectedElements && selectedText.selectedElements.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-blue-200">
-                        <p className="text-xs text-gray-600 mb-1">Selected elements:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {selectedText.selectedElements.map(elementId => (
-                            <span key={elementId} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                              {elementId} ({positionMap[elementId]?.type})
-                            </span>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Markdown positions: [{selectedText.from}:{selectedText.to}]
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
