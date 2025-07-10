@@ -28,7 +28,9 @@ function App() {
       setResetObservationCount(true);
       
       // Generate new session ID for the new case
+      console.log('About to generate new session ID for case:', caseName);
       generateNewSessionId();
+      console.log('New session ID generated for case:', caseName);
       
       // Load both analysis and summary content
       const caseContent = await loadFullCaseContent(caseName as CaseName);

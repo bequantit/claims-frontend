@@ -3,7 +3,12 @@ import { Comment } from '../types/comment';
 import { generateExportData } from '../utils/commentUtils';
 import { setupSessionId } from '../utils/setupSession';
 
-const sessionId = setupSessionId();
+// Get session ID dynamically to ensure we always have the latest value
+const getSessionId = () => {
+  const id = sessionStorage.getItem("session_id") || setupSessionId();
+  console.log('getSessionId() called, returning:', id);
+  return id;
+};
 
 interface UseAIIntegrationProps {
   summary: string;
@@ -31,11 +36,16 @@ export const useAIIntegration = ({
       const apiUrl = import.meta.env.VITE_API_URL;
       const token = import.meta.env.VITE_API_TOKEN;
 
+      console.log('sendToAI called - about to get session ID');
+      const currentSessionId = getSessionId();
+      console.log('sendToAI using session ID:', currentSessionId);
+      console.log('sessionStorage direct check:', sessionStorage.getItem("session_id"));
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'conversation-id': sessionId,
+          'conversation-id': currentSessionId,
           'observation-number': String(observationCount),
           'token': token,
         },
@@ -44,7 +54,7 @@ export const useAIIntegration = ({
     
       const data = await response.json();
       console.log('AI response:', data);
-      console.log("Session ID:", sessionId);
+      console.log("Session ID:", currentSessionId);
       console.log("API URL:", apiUrl);
 
       // Handle the AI response
