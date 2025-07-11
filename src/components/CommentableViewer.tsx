@@ -141,7 +141,7 @@ const CommentableViewer: React.FC<CommentableViewerProps> = ({
         <div className={styles.documentWrapper}>
           <div className={styles.documentContent}>
             <div className={styles.documentInner}>
-            <DocumentHeader />
+            <DocumentHeader summary={summary} />
 
             <DocumentContent 
               htmlContent={htmlContent}
