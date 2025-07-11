@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import CommentableViewer from './components/CommentableViewer';
 import CaseSelector from './components/CaseSelector';
+import LoginPage from './components/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './contexts/AuthContext';
 import { PositionMapping } from './utils/markdownPositionMapper';
 import { loadFullCaseContent, getCaseNames, CaseName } from './utils/caseLoader';
 import { generateNewSessionId } from './utils/setupSession';
 
-function App() {
+// Main application content (moved from original App component)
+const MainApp: React.FC = () => {
   const [selectedCase, setSelectedCase] = useState<string | null>(null);
   const [clearComments, setClearComments] = useState(false);
   const [resetObservationCount, setResetObservationCount] = useState(false);
@@ -119,6 +124,34 @@ function App() {
         )}
       </div>
     </div>
+  );
+};
+
+// Main App component with routing
+function App() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route 
+        path="/login" 
+        element={
+          isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
+        } 
+      />
+      <Route 
+        path="/" 
+        element={
+          <ProtectedRoute>
+            <MainApp />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="*" 
+        element={<Navigate to="/" replace />} 
+      />
+    </Routes>
   );
 }
 
