@@ -1,18 +1,28 @@
-// Dynamic imports for analysis and summary files from each case directory
-const caseFiles = {
-  'EMC_vs_BRI': {
-    analysis: () => import('../../data/EMC_vs_BRI/analysis_v7_gemini-2.5-pro.md?raw'),
-    summary: () => import('../../data/EMC_vs_BRI/summary_v7_gemini-2.5-pro.md?raw'),
-  },
-  'Turner_vs_xl': {
-    analysis: () => import('../../data/Turner_vs_xl/analysis_v7_gemini-2.5-pro.md?raw'),
-    summary: () => import('../../data/Turner_vs_xl/summary_v7_gemini-2.5-pro.md?raw'),
-  },
-  'Union_vs': {
-    analysis: () => import('../../data/Union_vs/analysis_v7_gemini-2.5-pro.md?raw'),
-    summary: () => import('../../data/Union_vs/summary_v7_gemini-2.5-pro.md?raw'),
-  },
+type CaseFile = {
+  analysis: () => Promise<string>;
+  summary: () => Promise<string>;
 };
+
+// Use import.meta.glob to import all markdown files as raw strings
+const allMarkdownFiles = import.meta.glob('../../data/*/*.md', { as: 'raw' });
+
+const caseFiles: Record<string, CaseFile> = {};
+
+// Iterate over all matched files
+for (const path in allMarkdownFiles) {
+  // Example path: ../../data/EMC_vs_BRI/summary_v7_gemini-2.5-pro.md
+  const match = path.match(/..\/..\/data\/([^/]+)\/(summary|analysis)_.*\.md/);
+  if (!match) continue;
+
+  const [, folder, type] = match; // type is "summary" or "analysis"
+
+  // Ensure entry exists
+  caseFiles[folder] ??= {} as CaseFile;
+
+  // Assign dynamic import
+  caseFiles[folder][type as 'summary' | 'analysis'] = allMarkdownFiles[path];
+}
+
 
 export type CaseName = keyof typeof caseFiles;
 
@@ -24,7 +34,7 @@ export interface CaseContent {
 export const loadCaseContent = async (caseName: CaseName): Promise<string> => {
   try {
     const module = await caseFiles[caseName].analysis();
-    return module.default;
+    return module;
   } catch (error) {
     console.error(`Failed to load analysis content for case: ${caseName}`, error);
     throw new Error(`Could not load analysis file for case: ${caseName}`);
@@ -34,7 +44,7 @@ export const loadCaseContent = async (caseName: CaseName): Promise<string> => {
 export const loadCaseSummary = async (caseName: CaseName): Promise<string> => {
   try {
     const module = await caseFiles[caseName].summary();
-    return module.default;
+    return module;
   } catch (error) {
     console.error(`Failed to load summary content for case: ${caseName}`, error);
     throw new Error(`Could not load summary file for case: ${caseName}`);
@@ -49,8 +59,8 @@ export const loadFullCaseContent = async (caseName: CaseName): Promise<CaseConte
     ]);
     
     return {
-      analysis: analysisModule.default,
-      summary: summaryModule.default,
+      analysis: analysisModule,
+      summary: summaryModule,
     };
   } catch (error) {
     console.error(`Failed to load full content for case: ${caseName}`, error);

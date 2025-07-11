@@ -1,0 +1,27 @@
+## Newton Presbyterian Church and The Presbytery of Boston v. Garrett Smith, et al.
+### Submission Summary
+This Claim, filed on March 17, 2017, in the Business Litigation Session of the Superior Court for Suffolk County, Massachusetts, is brought by the Newton Presbyterian Church and The Presbytery of Boston against certain former members of said church and a new entity they formed. The Claimants seek a declaratory judgment, injunctive relief, and monetary damages arising from an alleged unlawful seizure and conversion of church property following a schism within the congregation `[claim.pdf, Page 1, Paragraph 1]`. The dispute centers on the Defendants' purported disaffiliation from the Presbyterian Church (USA) and their subsequent exercise of control over the church's real and personal property `[claim.pdf, Page 3, Paragraph 8]`.
+
+### Named Defendant(s)/Party(ies)
+The Claim names the following parties as Defendants:
+- **Individual Defendants:** Garrett Smith, a former staff member of Newton Presbyterian Church ("NPC") `[claim.pdf, Page 4, Paragraph 12]`, and Carmen Aldinger, Anders Brownworth, Thomas DeVol, Harold Jones, Doris Kellom, Kristen Lucken, Roger Mark, Rosalind Picard, Daniel Romaine, and Beatrice Yankey, all identified as former members of NPC who now constitute the "Leadership Team" of the Newton Covenant Church `[claim.pdf, Page 5, Paragraphs 14-23]`.
+- **Corporate Defendant:** The Newton Covenant Church ("NCC"), which the Complaint alleges is a religious organization founded in early 2017 by the individual defendants and which purports to be located at the NPC property `[claim.pdf, Page 4, Paragraph 13]`.
+
+### Core Allegations/Alleged Wrongful Act(s)
+The central allegations constituting Wrongful Acts under the policy are that the individual defendants, acting as a break-away faction, effectuated an unauthorized and unconstitutional disaffiliation from the Presbyterian Church (USA) ("PCUSA") `[claim.pdf, Page 2, Paragraph 5]`. In direct contravention of the PCUSA Constitution and directives from The Presbytery of Boston, the defendants allegedly conducted an illegitimate vote to secede, renamed the church, and unlawfully exerted dominion and control over all property of the Newton Presbyterian Church `[claim.pdf, Page 3, Paragraph 8]`. Specific acts include, but are not limited to, changing the church signage, seizing control of bank and investment accounts, making unauthorized expenditures, shutting down the official church website and rerouting web traffic, and barring the loyal members of the congregation from accessing and using the church premises for worship `[claim.pdf, Page 3-4, Paragraph 8]`. These acts are alleged to be a violation of the express trust clause within the PCUSA Constitution, which dictates that all congregational property is held in trust for the benefit of the PCUSA `[claim.pdf, Page 7-8, Paragraph 33]`.
+
+### Relief Sought
+The Claimants seek the following forms of relief from the Court:
+- **Declaratory Judgment:** An order declaring that the ecclesiastical determination of the Presbytery regarding ownership and control of the NPC property is to be recognized and enforced `[claim.pdf, Page 22, Paragraph (a)]`.
+- **Injunctive Relief:** A permanent injunction requiring the defendants to vacate the NPC property and enjoining them from any further use thereof `[claim.pdf, Page 22, Paragraph (b)]`.
+- **Monetary Damages:** An award of damages resulting from the defendants' trespass, including for alterations to the property `[claim.pdf, Page 22, Paragraph (c)]`, and for conversion of personal property, including unauthorized payments from NPC bank accounts and diversion of contributions `[claim.pdf, Page 22, Paragraph (d)]` and `[claim.pdf, Page 21, Paragraphs 89, 91]`. This could constitute a claim for restitution of ill-gotten gains.
+- **Costs and Fees:** An award of all costs, interest, and attorneys' fees to the extent permitted by law `[claim.pdf, Page 22, Paragraph (e)]`.
+- **Other Relief:** Any such other relief as the Court deems appropriate `[claim.pdf, Page 22, Paragraph (f)]`.
+
+### Counts
+- **Count I:** Seeks a declaratory judgment against all defendants regarding the ownership and control of the church property `[claim.pdf, Page 19, N/A]`.
+- **Count II:** Alleges trespass against all defendants for unlawfully occupying and altering the real property of the church `[claim.pdf, Page 20, N/A]`.
+- **Count III:** Alleges conversion against all defendants for exerting unauthorized dominion over the church's personal and financial property `[claim.pdf, Page 21, N/A]`.
+
+### References to Related Claims
+The Complaint does not explicitly reference any prior litigation, demands, or claims filed against the named defendants concerning the subject matter herein. However, it does extensively detail a pre-litigation dispute process managed by the Presbytery of Boston, which included the formation of a Response Team `[claim.pdf, Page 14, Paragraph 57]` and an Administrative Commission `[claim.pdf, Page 16, Paragraph 62]`. This process involved formal communications and directives to the defendants, including a written declaration that NPC was in schism and that the Presbytery was assuming original jurisdiction over the church property `[claim.pdf, Page 16, Paragraph 65]`. These prior administrative proceedings and communications could potentially constitute an interrelated Wrongful Act under the policy.
